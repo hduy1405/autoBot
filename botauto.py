@@ -20,16 +20,19 @@ def run_web():
     server = HTTPServer(("0.0.0.0", port), Handler)
     server.serve_forever()
 
-# ===== DOWNLOAD =====
+# ===== DOWNLOAD (ĐÃ FIX) =====
 def download_video(url):
     ydl_opts = {
-        'outtmpl': 'video.%(ext)s',
-        'format': 'best[height<=720]'
+        'outtmpl': 'video.mp4',
+        'format': 'best[height<=480]',  # 🔥 giảm dung lượng
+        'noplaylist': True,
+        'quiet': True
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        return ydl.prepare_filename(info)
+        ydl.download([url])
+
+    return "video.mp4"
 
 # ===== COMMAND =====
 async def dl(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -44,13 +47,22 @@ async def dl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         file_path = download_video(url)
 
+        # 🔥 check dung lượng
+        size = os.path.getsize(file_path) / (1024 * 1024)
+        print(f"📦 File size: {size:.2f} MB")
+
+        if size > 49:
+            await update.message.reply_text("❌ Video quá nặng (>50MB)")
+            os.remove(file_path)
+            return
+
         with open(file_path, 'rb') as f:
             await update.message.reply_video(video=f)
 
         os.remove(file_path)
 
     except Exception as e:
-        print("❌", e)
+        print("❌ ERROR:", e)
         await update.message.reply_text("❌ Lỗi tải video")
 
 # ===== MAIN =====
