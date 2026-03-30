@@ -35,9 +35,9 @@ def dl(update, context):
         update.message.reply_text("❌ Lỗi tải video")
 
 def main():
-    updater = Updater(TOKEN)
-    dp = updater.dispatcher
+    updater = Updater(token=TOKEN, use_context=True)  # ✅ FIX
 
+    dp = updater.dispatcher
     dp.add_handler(CommandHandler("dl", dl))
 
     updater.start_polling()
