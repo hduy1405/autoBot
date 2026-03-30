@@ -1,12 +1,9 @@
 import os
 import yt_dlp
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.ext import Updater, CommandHandler
 
-# ✅ lấy token từ ENV (Render)
 TOKEN = os.getenv("TOKEN")
 
-# ===== DOWNLOAD =====
 def download_video(url):
     ydl_opts = {
         'outtmpl': 'video.%(ext)s',
@@ -17,37 +14,35 @@ def download_video(url):
         info = ydl.extract_info(url, download=True)
         return ydl.prepare_filename(info)
 
-# ===== COMMAND /dl =====
-async def dl(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def dl(update, context):
     try:
         if not context.args:
-            await update.message.reply_text("❌ Dùng: /dl link")
+            update.message.reply_text("❌ Dùng: /dl link")
             return
 
         url = context.args[0]
 
-        await update.message.reply_text("📥 Đang tải video...")
+        update.message.reply_text("📥 Đang tải...")
 
         file_path = download_video(url)
 
-        with open(file_path, 'rb') as f:
-            await update.message.reply_video(video=f)
+        update.message.reply_video(video=open(file_path, 'rb'))
 
         os.remove(file_path)
 
     except Exception as e:
-        print("❌ Lỗi:", e)
-        await update.message.reply_text("❌ Lỗi tải video")
+        print("❌", e)
+        update.message.reply_text("❌ Lỗi tải video")
 
-# ===== MAIN =====
-if __name__ == "__main__":
-    if not TOKEN:
-        print("❌ Thiếu TOKEN trong ENV")
-        exit()
+def main():
+    updater = Updater(TOKEN)
+    dp = updater.dispatcher
 
-    app = ApplicationBuilder().token(TOKEN).build()
+    dp.add_handler(CommandHandler("dl", dl))
 
-    app.add_handler(CommandHandler("dl", dl))
-
+    updater.start_polling()
     print("🤖 Bot đang chạy...")
-    app.run_polling()
+    updater.idle()
+
+if __name__ == "__main__":
+    main()
