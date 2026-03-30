@@ -20,19 +20,28 @@ def run_web():
     server = HTTPServer(("0.0.0.0", port), Handler)
     server.serve_forever()
 
-# ===== DOWNLOAD (ĐÃ FIX) =====
+# ===== DOWNLOAD (FIX FULL) =====
 def download_video(url):
     ydl_opts = {
         'outtmpl': 'video.mp4',
-        'format': 'best[height<=480]',  # 🔥 giảm dung lượng
+        'format': 'best[height<=480]',
         'noplaylist': True,
-        'quiet': True
+        'quiet': False,
+        'merge_output_format': 'mp4',
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0'
+        }
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
 
-    return "video.mp4"
+        return "video.mp4"
+
+    except Exception as e:
+        print("❌ yt-dlp error:", e)
+        return None
 
 # ===== COMMAND =====
 async def dl(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -47,7 +56,10 @@ async def dl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         file_path = download_video(url)
 
-        # 🔥 check dung lượng
+        if not file_path or not os.path.exists(file_path):
+            await update.message.reply_text("❌ Không tải được video (link lỗi hoặc bị chặn)")
+            return
+
         size = os.path.getsize(file_path) / (1024 * 1024)
         print(f"📦 File size: {size:.2f} MB")
 
@@ -67,8 +79,15 @@ async def dl(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ===== MAIN =====
 if __name__ == "__main__":
-    # chạy web fake song song
-    threading.Thread(target=run_web).start()
+    # 🔥 tránh conflict (reset webhook)
+    import requests
+    try:
+        requests.get(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook")
+    except:
+        pass
+
+    # chạy web fake
+    threading.Thread(target=run_web, daemon=True).start()
 
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("dl", dl))
